@@ -3,16 +3,23 @@ package main
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/julienschmidt/httprouter"
 )
 
-func headler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello"))
+func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	fmt.Fprintln(w, "GET")
+
+}
+func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	fmt.Fprintln(w, "PUT")
+
 }
 
 func main() {
-	http.HandleFunc("/hello", headler)
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		fmt.Println("Ошибка запуска сервера:", err)
-	}
+	router := httprouter.New()
+	router.GET("/get", get)
+	router.PUT("/put", put)
+	http.ListenAndServe(":8080", router)
+
 }
