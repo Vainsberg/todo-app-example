@@ -32,6 +32,11 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
+	if requestget.Message == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Empty element is not allowed")
+		return
+	}
 
 	value, exists := generalmap[requestget.Message]
 	if exists {
@@ -59,6 +64,11 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
+	if requestget.Message == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Empty element is not allowed")
+		return
+	}
 
 	generalmap[requestget.Message] = requestget.Message
 	w.WriteHeader(http.StatusCreated)
@@ -80,12 +90,17 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
+	if requestget.Message == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Empty element is not allowed")
+		return
+	}
 
 	delete(generalmap, requestget.Message)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func patch(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var requestget Request
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -101,9 +116,21 @@ func patch(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
+	if requestget.Message == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Empty element is not allowed")
+		return
+	}
 
-	generalmap[requestget.Message] = requestget.Message
-	w.WriteHeader(http.StatusAccepted)
+	if generalmap[requestget.Message] == requestget.Message {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "An element is already being selected")
+
+	} else {
+		generalmap[requestget.Message] = requestget.Message
+		w.WriteHeader(http.StatusAccepted)
+	}
+
 }
 
 func main() {
@@ -111,6 +138,6 @@ func main() {
 	router.GET("/get", get)
 	router.PUT("/put", put)
 	router.DELETE("/delete", deleted)
-	router.PATCH("/patch", patch)
+	router.POST("/post", post)
 	http.ListenAndServe(":8080", router)
 }
