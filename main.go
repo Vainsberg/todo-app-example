@@ -1,21 +1,29 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-var generalmap = make(map[string]string)
+var db *sql.DB
 
 type Request struct {
 	Message string
 }
 
 func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprintln(w, "Method Not Allowed")
+		return
+	}
 	var requestget Request
 
 	body, err := io.ReadAll(r.Body)
@@ -38,17 +46,20 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	value, exists := generalmap[requestget.Message]
-	if exists {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintln(w, "Get value:", value)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintln(w, "Not Found")
+	_, err = db.Exec("SELECT * FROM text WHERE name = ?", requestget.Message)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintln(w, "Internal Server Error")
+		return
 	}
 }
 
 func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if r.Method != "PUT" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprintln(w, "Method Not Allowed")
+		return
+	}
 	var requestget Request
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -64,17 +75,27 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
+
 	if requestget.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Empty element is not allowed")
 		return
 	}
 
-	generalmap[requestget.Message] = requestget.Message
-	w.WriteHeader(http.StatusCreated)
+	_, err = db.Exec("INSERT INTO text (name) VALUES (?)", requestget.Message)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintln(w, "Internal Server Error")
+		return
+	}
 }
 
 func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if r.Method != "DELETE" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprintln(w, "Method Not Allowed")
+		return
+	}
 	var requestget Request
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -90,17 +111,20 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
-	if requestget.Message == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Empty element is not allowed")
+	_, err = db.Exec("DELETE FROM text WHERE name = ?", requestget.Message)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintln(w, "Internal Server Error")
 		return
 	}
-
-	delete(generalmap, requestget.Message)
-	w.WriteHeader(http.StatusNoContent)
 }
 
 func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprintln(w, "Method Not Allowed")
+		return
+	}
 	var requestget Request
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -122,18 +146,31 @@ func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	if generalmap[requestget.Message] == requestget.Message {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "An element is already being selected")
-
-	} else {
-		generalmap[requestget.Message] = requestget.Message
-		w.WriteHeader(http.StatusAccepted)
+	_, err = db.Exec("INSERT INTO text (name) VALUES (?)", requestget.Message)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintln(w, "Internal Server Error")
+		return
 	}
-
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func main() {
+	var err error
+	db, err = sql.Open("sqlite3", "store.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS text (
+			id INTEGER PRIMARY KEY,
+			name TEXT
+		)
+	`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	router := httprouter.New()
 	router.GET("/get", get)
 	router.PUT("/put", put)
