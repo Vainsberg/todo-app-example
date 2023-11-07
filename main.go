@@ -15,6 +15,7 @@ import (
 var db *sql.DB
 
 type Request struct {
+	Title   string
 	Message string
 }
 
@@ -46,7 +47,12 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	_, err = db.Exec("SELECT * FROM text WHERE name = ?", requestget.Message)
+	row := db.QueryRow("select * from Products where title = $1", requestget.Title)
+	err = row.Scan(&requestget.Title, &requestget.Message)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(requestget.Title, requestget.Message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -82,7 +88,7 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (name) VALUES (?)", requestget.Message)
+	_, err = db.Exec("INSERT INTO text (name) VALUES (?)", requestget)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -111,7 +117,7 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
-	_, err = db.Exec("DELETE FROM text WHERE name = ?", requestget.Message)
+	_, err = db.Exec("DELETE FROM text WHERE name = ?", requestget)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -146,7 +152,7 @@ func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (name) VALUES (?)", requestget.Message)
+	_, err = db.Exec("INSERT INTO text (name) VALUES (?)", requestget)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
