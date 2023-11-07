@@ -14,19 +14,12 @@ import (
 
 var db *sql.DB
 
-type Request struct {
-	Title   string
-	Message string
-}
-
 func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	if r.Method != "GET" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		fmt.Fprintln(w, "Method Not Allowed")
-		return
+	type RequestGet struct {
+		Title string
 	}
 
-	var requestget Request
+	var requestget RequestGet
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -43,13 +36,13 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	if requestget.Title == "" || requestget.Message == "" {
+	if requestget.Title == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Both 'Title' and 'Message' fields are required")
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (title, name) VALUES (?, ?)", requestget.Title, requestget.Message)
+	_, err = db.Exec("SELECT title FROM text WHERE (?)", requestget.Title)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -69,13 +62,11 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	if r.Method != "PUT" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		fmt.Fprintln(w, "Method Not Allowed")
-		return
+	type RequestPut struct {
+		Title   string
+		Message string
 	}
-
-	var requestget Request
+	var requestput RequestPut
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -85,20 +76,20 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 	r.Body.Close()
 
-	errors := json.Unmarshal(body, &requestget)
+	errors := json.Unmarshal(body, &requestput)
 	if errors != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
 
-	if requestget.Title == "" || requestget.Message == "" {
+	if requestput.Title == "" || requestput.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Both 'Title' and 'Message' fields are required")
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (title, name) VALUES (?, ?)", requestget.Title, requestget.Message)
+	_, err = db.Exec("INSERT INTO text (message, name) VALUES (?, ?)", requestput.Title, requestput.Message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -108,13 +99,12 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	if r.Method != "DELETE" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		fmt.Fprintln(w, "Method Not Allowed")
-		return
+	type RequestDeleted struct {
+		Title   string
+		Message string
 	}
 
-	var requestget Request
+	var requestdeleted RequestDeleted
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -124,14 +114,14 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 	r.Body.Close()
 
-	errors := json.Unmarshal(body, &requestget)
+	errors := json.Unmarshal(body, &requestdeleted)
 	if errors != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
 
-	_, err = db.Exec("DELETE FROM text WHERE name = ?", requestget)
+	_, err = db.Exec("DELETE FROM text WHERE name = ?", requestdeleted)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -141,13 +131,12 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	if r.Method != "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		fmt.Fprintln(w, "Method Not Allowed")
-		return
+	type RequestPost struct {
+		Title   string
+		Message string
 	}
 
-	var requestget Request
+	var requestpost RequestPost
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -157,20 +146,20 @@ func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 	r.Body.Close()
 
-	errors := json.Unmarshal(body, &requestget)
+	errors := json.Unmarshal(body, &requestpost)
 	if errors != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
 
-	if requestget.Message == "" {
+	if requestpost.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Empty element is not allowed")
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (name, title) VALUES (?, ?)", requestget.Message, requestget.Title)
+	_, err = db.Exec("INSERT INTO text (name, message) VALUES (?, ?)", requestpost.Message, requestpost.Title)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -189,9 +178,9 @@ func main() {
 	}
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS text (
-			id INTEGER PRIMARY KEY
+			id INTEGER PRIMARY KEY,
 			title TEXT,
-			name TEXT
+			message TEXT
 		)
 	`)
 
