@@ -25,6 +25,7 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Method Not Allowed")
 		return
 	}
+
 	var requestget Request
 
 	body, err := io.ReadAll(r.Body)
@@ -41,23 +42,30 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
-	if requestget.Message == "" {
+
+	if requestget.Title == "" || requestget.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Empty element is not allowed")
+		fmt.Fprintln(w, "Both 'Title' and 'Message' fields are required")
 		return
 	}
 
-	row := db.QueryRow("select * from Products where title = $1", requestget.Title)
-	err = row.Scan(&requestget.Title, &requestget.Message)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(requestget.Title, requestget.Message)
+	_, err = db.Exec("INSERT INTO text (title, name) VALUES (?, ?)", requestget.Title, requestget.Message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
 		return
 	}
+
+	response, err := json.Marshal(requestget)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintln(w, "Internal Server Error")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -66,7 +74,9 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Method Not Allowed")
 		return
 	}
+
 	var requestget Request
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -82,18 +92,19 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	if requestget.Message == "" {
+	if requestget.Title == "" || requestget.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Empty element is not allowed")
+		fmt.Fprintln(w, "Both 'Title' and 'Message' fields are required")
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (name) VALUES (?)", requestget)
+	_, err = db.Exec("INSERT INTO text (title, name) VALUES (?, ?)", requestget.Title, requestget.Message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
 		return
 	}
+
 }
 
 func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -102,7 +113,9 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Method Not Allowed")
 		return
 	}
+
 	var requestget Request
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -117,12 +130,14 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
+
 	_, err = db.Exec("DELETE FROM text WHERE name = ?", requestget)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
 		return
 	}
+
 }
 
 func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -131,7 +146,9 @@ func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Method Not Allowed")
 		return
 	}
+
 	var requestget Request
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -146,33 +163,38 @@ func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		fmt.Fprintln(w, "Bad Request")
 		return
 	}
+
 	if requestget.Message == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Empty element is not allowed")
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (name) VALUES (?)", requestget)
+	_, err = db.Exec("INSERT INTO text (name, title) VALUES (?, ?)", requestget.Message, requestget.Title)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
 		return
 	}
+
 	w.WriteHeader(http.StatusAccepted)
 }
 
 func main() {
 	var err error
+
 	db, err = sql.Open("sqlite3", "store.db")
 	if err != nil {
 		log.Fatal(err)
 	}
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS text (
-			id INTEGER PRIMARY KEY,
+			id INTEGER PRIMARY KEY
+			title TEXT,
 			name TEXT
 		)
 	`)
+
 	if err != nil {
 		log.Fatal(err)
 	}
