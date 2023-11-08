@@ -16,7 +16,8 @@ var db *sql.DB
 
 func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	type RequestGet struct {
-		Title string
+		Title   string
+		Message string
 	}
 
 	var requestget RequestGet
@@ -43,13 +44,15 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	}
 
 	row := db.QueryRow("select * from text where title  = $1", requestget.Title)
-	str := RequestGet{}
-	err = row.Scan(&str.Title)
+	responsen := RequestGet{}
+	err = row.Scan(&requestget.Title, &requestget.Message)
 	if err != nil {
-		panic(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintln(w, "Internal Server Error")
+		return
 	}
 
-	response, err := json.Marshal(requestget)
+	response, err := json.Marshal(responsen)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -89,7 +92,7 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (message, title) VALUES (?, ?)", requestput.Title, requestput.Message)
+	_, err = db.Exec("INSERT INTO text (title,message) VALUES (?, ?)", requestput.Title, requestput.Message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -120,7 +123,7 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	_, err = db.Exec("DELETE FROM text WHERE title = ?", requestdeleted)
+	_, err = db.Exec("DELETE FROM text WHERE title = ?", requestdeleted.Title)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
