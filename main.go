@@ -38,15 +38,15 @@ func get(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	if requestget.Title == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Both 'Title' and 'Message' fields are required")
+		fmt.Fprintln(w, "Both 'Title' fields are required")
 		return
 	}
 
-	_, err = db.Exec("SELECT title FROM text WHERE (?)", requestget.Title)
+	row := db.QueryRow("select * from text where title  = $1", requestget.Title)
+	str := RequestGet{}
+	err = row.Scan(&str.Title)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(w, "Internal Server Error")
-		return
+		panic(err)
 	}
 
 	response, err := json.Marshal(requestget)
@@ -89,7 +89,7 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (message, name) VALUES (?, ?)", requestput.Title, requestput.Message)
+	_, err = db.Exec("INSERT INTO text (message, title) VALUES (?, ?)", requestput.Title, requestput.Message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -100,8 +100,7 @@ func put(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	type RequestDeleted struct {
-		Title   string
-		Message string
+		Title string
 	}
 
 	var requestdeleted RequestDeleted
@@ -121,7 +120,7 @@ func deleted(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	_, err = db.Exec("DELETE FROM text WHERE name = ?", requestdeleted)
+	_, err = db.Exec("DELETE FROM text WHERE title = ?", requestdeleted)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
@@ -159,7 +158,7 @@ func post(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	_, err = db.Exec("INSERT INTO text (name, message) VALUES (?, ?)", requestpost.Message, requestpost.Title)
+	_, err = db.Exec("INSERT INTO text (title, message) VALUES (?, ?)", requestpost.Title, requestpost.Message)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Internal Server Error")
