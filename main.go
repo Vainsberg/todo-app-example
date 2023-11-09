@@ -196,5 +196,4 @@ func main() {
 	router.DELETE("/delete", deleted)
 	router.POST("/post", post)
 	http.ListenAndServe(":8080", router)
->>>>>>> init-server
 }
